@@ -43,7 +43,7 @@ jobs:
             platform-tools
             platforms;android-35
             build-tools;35.0.0
-            ndk;28.2.13676358
+            cmdline-tools;latest
 
       - name: Install Buildozer
         run: |
@@ -55,12 +55,31 @@ jobs:
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
           mkdir -p "$(dirname "$SDK")"
+
+          if [ -e "$SDK" ] || [ -L "$SDK" ]; then
+            rm -rf "$SDK"
+          fi
+
           ln -s "$ANDROID_HOME" "$SDK"
+
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager -path '*/bin/sdkmanager' \
+            -print -quit)"
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: sdkmanager not found"
+            exit 1
+          fi
+
+          mkdir -p "$SDK/tools/bin"
+          ln -sf "$SDKMANAGER" "$SDK/tools/bin/sdkmanager"
+
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
 
       - name: Build APK
-        run: buildozer android debug
+        run: |
+          buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
