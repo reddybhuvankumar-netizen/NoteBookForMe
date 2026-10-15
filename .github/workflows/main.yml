@@ -13,6 +13,9 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
+    env:
+      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,7 +37,13 @@ jobs:
           sudo apt-get install -y \
             git zip unzip autoconf libtool pkg-config \
             zlib1g-dev libncurses-dev cmake libffi-dev \
-            libssl-dev build-essential
+            libssl-dev build-essential \
+            libltdl-dev libsqlite3-dev
+
+      - name: Install Android command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
       - name: Install Buildozer
         run: |
@@ -42,35 +51,30 @@ jobs:
           python -m pip install buildozer "cython==0.29.36"
 
       - name: Configure Android SDK
+        shell: bash
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
           mkdir -p "$SDK"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-          echo "PATH=$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$PATH" >> "$GITHUB_ENV"
 
-      - name: Install Android command-line tools
-        run: |
-          SDK="$ANDROID_HOME"
-          mkdir -p "$SDK/cmdline-tools"
-          cd "$RUNNER_TEMP"
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip
-          mkdir -p "$SDK/cmdline-tools/latest"
-          cp -r cmdline-tools/. "$SDK/cmdline-tools/latest/"
+          TOOLS="$(find "$ANDROID_HOME" -type f -name sdkmanager \
+            -path '*/bin/sdkmanager' -print -quit)"
 
-      - name: Accept licenses and install SDK packages
-        run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" --licenses || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" \
+          if [ -z "$TOOLS" ]; then
+            echo "ERROR: sdkmanager was not found."
+            exit 1
+          fi
+
+          echo "SDKMANAGER=$TOOLS" >> "$GITHUB_ENV"
+          yes | "$TOOLS" --sdk_root="$SDK" --licenses || true
+
+          "$TOOLS" --sdk_root="$SDK" \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
 
       - name: Build APK
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         run: |
           buildozer android debug
 
