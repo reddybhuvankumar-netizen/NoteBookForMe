@@ -1,4 +1,3 @@
-```yaml
 name: Build NoteBookForMe APK
 
 on:
@@ -96,4 +95,3 @@ jobs:
           name: NoteBookForMe-APK
           path: bin/*.apk
           if-no-files-found: error
-```
