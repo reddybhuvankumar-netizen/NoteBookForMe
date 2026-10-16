@@ -1,3 +1,4 @@
+```yaml
 name: Build NoteBookForMe APK
 
 on:
@@ -16,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -50,7 +51,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install buildozer "cython==0.29.36"
 
-      - name: Configure Buildozer SDK
+      - name: Configure Android SDK
         shell: bash
         run: |
           SDK="$HOME/.buildozer/android/platform/android-sdk"
@@ -77,7 +78,15 @@ jobs:
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
 
+      - name: Configure Python build environment
+        run: |
+          echo "P4A_RELEASE=3.11" >> "$GITHUB_ENV"
+          python --version
+          python -m pip --version
+
       - name: Build APK
+        env:
+          P4A_RELEASE: '3.11'
         run: |
           buildozer android debug
 
@@ -87,3 +96,4 @@ jobs:
           name: NoteBookForMe-APK
           path: bin/*.apk
           if-no-files-found: error
+```
